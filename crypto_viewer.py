@@ -6,7 +6,6 @@ import pandas as pd
 import datetime as dt
 import glob
 import base64
-from st_clickable_images import clickable_images
 
 def load_data(limit='10'):
   '''
