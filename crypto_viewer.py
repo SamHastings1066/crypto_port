@@ -73,16 +73,9 @@ if "assets_json" not in st.session_state:
 symbols_list = st.session_state.symbols
 names_list = st.session_state.names
 ids_list = st.session_state.ids
-cols = st.columns(len(symbols_list))
-checkboxes=[]
-for i, symbol in enumerate(symbols_list):
-  col = cols[i]
-  col.image(f'logos/{symbol}.png',width=40)
-  globals()[st.session_state.names[i]] = col.checkbox(symbol, value = 0)
-  checkboxes.append(globals()[st.session_state.names[i]])
-
 asset_json = st.session_state.assets_json
 histories_dict = st.session_state.histories
+
 
 def date_conv(date):
     return dt.datetime.strptime(date, '%Y-%m-%d')
@@ -101,8 +94,7 @@ for id in ids_list:
     returns_df = pd.DataFrame({"coin": id, "date":date[1:], "price": returns})
     return_histories_df = pd.concat([return_histories_df, returns_df])
 
-#fig1 = px.line(price_histories_df, x="date", y="price", color="coin")
-#st.write(fig1)
+
 
 start_date = dt.date.today()-dt.timedelta(360)
 rebased_prices_df = pd.DataFrame(columns=['coin','date','price','rebased_price'])
@@ -115,20 +107,68 @@ for id in ids_list:
     temp_rebase_df['rebased_price']=rebased_price
     rebased_prices_df = pd.concat([rebased_prices_df, temp_rebase_df])
 
-#fig2 = px.line(rebased_prices_df, x="date", y="rebased_price", color="coin")
-#st.write(fig2)
+fig2 = px.line(rebased_prices_df, x="date", y="rebased_price", color="coin")
+st.write(fig2)
+cols = st.columns(len(symbols_list))
+checkboxes=[]
+for i, symbol in enumerate(symbols_list):
+  col = cols[i]
+  col.image(f'logos/{symbol}.png',width=40)
+  globals()[st.session_state.names[i]] = col.checkbox(symbol, value = 0)
+  checkboxes.append(globals()[st.session_state.names[i]])
+
+
+
+
+
 
 if any(checkboxes):
   checked_ids=[]
+  cols2 = st.columns(sum(checkboxes))
+  j=0
   for i, value in enumerate(checkboxes):
     if value==1:
       checked_ids.append(ids_list[i])
-  price_subset_df = price_histories_df[price_histories_df['coin'].isin(checked_ids)]
-  rebased_subset_df = rebased_prices_df[rebased_prices_df['coin'].isin(checked_ids)]
-  fig1 = px.line(price_subset_df, x="date", y="price", color="coin")
-  st.write(fig1)
-  fig2 = px.line(rebased_subset_df, x="date", y="rebased_price", color="coin")
-  st.write(fig2)
+      col2=cols2[j]
+      col2.image(f'logos/{symbols_list[i]}.png',width=20)
+      j+=1
+
+st.image('images/result.png', width=360)
+
+gen_port = st.button('Generate portfolio return')
+
+if gen_port:
+  weights = [1/len(checked_ids)]*len(checked_ids)
+  portfolio_dict={checked_ids[i]:weights[i] for i in range(len(checked_ids))}
+  start_date = dt.date.today()-dt.timedelta(360)
+  weighted_prices_df = pd.DataFrame(columns=['coin','date','price','weighted_price'])
+  for id in checked_ids:
+    temp_weight_df = return_histories_df[(return_histories_df['date']>=pd.Timestamp(start_date))
+                                        & (return_histories_df['coin']==id)]
+    weighted_price=[portfolio_dict[id]]
+    for i in range(1,len(temp_weight_df)):
+      weighted_price.append(temp_weight_df['price'].iloc[i]*weighted_price[i-1])
+    temp_weight_df['weighted_price']=weighted_price
+    weighted_prices_df = pd.concat([weighted_prices_df, temp_weight_df])
+  date_list = [start_date + dt.timedelta(days=x) for x in range(360)]
+  port_returns=[]
+  for date in date_list:
+    port_returns.append(weighted_prices_df['weighted_price'][weighted_prices_df['date']==pd.Timestamp(date)].sum())
+  port_returns_df = pd.DataFrame({'date':date_list, 'price': port_returns})
+  fig3 = px.line(port_returns_df, x="date", y="price")
+  st.write(fig3)
+
+
+  #for i, symbol in enumerate(symbols_list):
+  #  col2 = cols2[i]
+  #  col.image(f'logos/{symbol}.png',width=40)
+  #price_subset_df = price_histories_df[price_histories_df['coin'].isin(checked_ids)]
+  #rebased_subset_df = rebased_prices_df[rebased_prices_df['coin'].isin(checked_ids)]
+  #fig1 = px.line(price_subset_df, x="date", y="price", color="coin")
+  #st.write(fig1)
+  #fig2 = px.line(rebased_subset_df, x="date", y="rebased_price", color="coin")
+  #st.write(fig2)
+
 
 
 
