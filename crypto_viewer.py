@@ -4,8 +4,25 @@ import json
 import plotly.express as px
 import pandas as pd
 import datetime as dt
-import glob
-import base64
+try:
+    from PIL import Image
+except ImportError:
+    import Image
+import numpy as np
+
+st.markdown(
+  """
+  <style>
+  .css-qrbaxs {
+    font-size: 0px;
+}
+.css-1inwz65 {
+    font-size: 0px;
+}
+  </style>
+  """,
+  unsafe_allow_html = True
+)
 
 def load_data(limit='10'):
   '''
@@ -67,6 +84,11 @@ if "assets_json" not in st.session_state:
   st.session_state.names = names
   st.session_state.ids = ids
   st.session_state.histories = load_histories(ids)
+  id_symbol_map = {}
+  for i, id in enumerate(ids):
+    id_symbol_map[id]=symbols[i]
+  st.session_state.id_symbol_map = id_symbol_map
+
 
 
 #write_symbols(st.session_state.symbols)
@@ -75,7 +97,7 @@ names_list = st.session_state.names
 ids_list = st.session_state.ids
 asset_json = st.session_state.assets_json
 histories_dict = st.session_state.histories
-
+id_symbol_map = st.session_state.id_symbol_map
 
 def date_conv(date):
     return dt.datetime.strptime(date, '%Y-%m-%d')
@@ -122,18 +144,71 @@ for i, symbol in enumerate(symbols_list):
 
 
 
+#if any(checkboxes):
+#  checked_ids=[]
+#  cols2 = st.columns(sum(checkboxes))
+#  j=0
+#  for i, value in enumerate(checkboxes):
+#    if value==1:
+#      checked_ids.append(ids_list[i])
+#      col2=cols2[j]
+#      col2.image(f'logos/{symbols_list[i]}.png',width=20)
+#      j+=1
+
+def create_grid(top_left, bottom_right):
+    num_rows=3
+    num_cols=7
+    col_positions = np.linspace(top_left[0], bottom_right[0], num=num_cols)
+    row_positions = np.linspace(top_left[1], bottom_right[1], num=num_rows)
+    return [(int(col_positions[i]),int(row_positions[j])) for j in range(num_rows) for  i in range(num_cols)]
+
+# These are the coordinates of the top left and bottom right of the cart image
+# given it's curent size. You need to change these if you change the size of the
+# cart
+top_left=[300,300]
+bottom_right=[650, 450]
+
+grid = create_grid(top_left, bottom_right)
+
+def add_logo(background, symbol, position, size=(70,70)):
+    bg = Image.open(background)
+    fg = Image.open("logos/{}.png".format(symbol))
+
+    bg = bg.convert("RGBA")
+    fg = fg.convert("RGBA")
+
+    # Resize logo
+    fg_resized = fg.resize(size)
+
+    # Overlay logo onto background at position
+    bg.paste(fg_resized,box=position,mask=fg_resized)
+
+    # Save result
+    bg.save(background)
+
+
+
+cart_cols = st.columns([4,1,1])
+
+
+
 if any(checkboxes):
   checked_ids=[]
-  cols2 = st.columns(sum(checkboxes))
-  j=0
   for i, value in enumerate(checkboxes):
     if value==1:
       checked_ids.append(ids_list[i])
-      col2=cols2[j]
-      col2.image(f'logos/{symbols_list[i]}.png',width=20)
-      j+=1
+      cart_cols[1].image(f'logos/{symbols_list[i]}.png',width=20)
+      cart_cols[2].slider(ids_list[i],min_value=0, max_value=100, value=50)
 
-st.image('images/result.png', width=360)
+
+# change the below to make it run only if checked_ids ecists - i.e. wrap it up oin a function
+original = Image.open("images/cart.png")
+original.save('images/background.png')
+position_ids = [round(x) for x in np.linspace(0, len(grid)-1, num=len(checked_ids))]
+for i, id in enumerate(checked_ids):
+    add_logo('images/background.png', id_symbol_map[id], grid[position_ids[i]], size=(70,70))
+
+cart_cols[0].image('images/background.png', width=360)
 
 gen_port = st.button('Generate portfolio return')
 
