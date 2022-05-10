@@ -4,9 +4,25 @@ import json
 import plotly.express as px
 import pandas as pd
 import datetime as dt
-import glob
-import base64
-from st_clickable_images import clickable_images
+try:
+    from PIL import Image
+except ImportError:
+    import Image
+import numpy as np
+
+st.markdown(
+  """
+  <style>
+  .css-qrbaxs {
+    font-size: 0px;
+}
+.css-1inwz65 {
+    font-size: 0px;
+}
+  </style>
+  """,
+  unsafe_allow_html = True
+)
 
 def load_data(limit='10'):
   '''
@@ -68,22 +84,20 @@ if "assets_json" not in st.session_state:
   st.session_state.names = names
   st.session_state.ids = ids
   st.session_state.histories = load_histories(ids)
+  id_symbol_map = {}
+  for i, id in enumerate(ids):
+    id_symbol_map[id]=symbols[i]
+  st.session_state.id_symbol_map = id_symbol_map
+
 
 
 #write_symbols(st.session_state.symbols)
 symbols_list = st.session_state.symbols
 names_list = st.session_state.names
 ids_list = st.session_state.ids
-cols = st.columns(len(symbols_list))
-checkboxes=[]
-for i, symbol in enumerate(symbols_list):
-  col = cols[i]
-  col.image(f'logos/{symbol}.png',width=40)
-  globals()[st.session_state.names[i]] = col.checkbox(symbol, value = 0)
-  checkboxes.append(globals()[st.session_state.names[i]])
-
 asset_json = st.session_state.assets_json
 histories_dict = st.session_state.histories
+id_symbol_map = st.session_state.id_symbol_map
 
 def date_conv(date):
     return dt.datetime.strptime(date, '%Y-%m-%d')
@@ -102,8 +116,7 @@ for id in ids_list:
     returns_df = pd.DataFrame({"coin": id, "date":date[1:], "price": returns})
     return_histories_df = pd.concat([return_histories_df, returns_df])
 
-#fig1 = px.line(price_histories_df, x="date", y="price", color="coin")
-#st.write(fig1)
+
 
 start_date = dt.date.today()-dt.timedelta(360)
 rebased_prices_df = pd.DataFrame(columns=['coin','date','price','rebased_price'])
@@ -116,20 +129,121 @@ for id in ids_list:
     temp_rebase_df['rebased_price']=rebased_price
     rebased_prices_df = pd.concat([rebased_prices_df, temp_rebase_df])
 
-#fig2 = px.line(rebased_prices_df, x="date", y="rebased_price", color="coin")
-#st.write(fig2)
+fig2 = px.line(rebased_prices_df, x="date", y="rebased_price", color="coin")
+st.write(fig2)
+cols = st.columns(len(symbols_list))
+checkboxes=[]
+for i, symbol in enumerate(symbols_list):
+  col = cols[i]
+  col.image(f'logos/{symbol}.png',width=40)
+  globals()[st.session_state.names[i]] = col.checkbox(symbol, value = 0)
+  checkboxes.append(globals()[st.session_state.names[i]])
+
+
+
+
+
+
+#if any(checkboxes):
+#  checked_ids=[]
+#  cols2 = st.columns(sum(checkboxes))
+#  j=0
+#  for i, value in enumerate(checkboxes):
+#    if value==1:
+#      checked_ids.append(ids_list[i])
+#      col2=cols2[j]
+#      col2.image(f'logos/{symbols_list[i]}.png',width=20)
+#      j+=1
+
+def create_grid(top_left, bottom_right):
+    num_rows=3
+    num_cols=7
+    col_positions = np.linspace(top_left[0], bottom_right[0], num=num_cols)
+    row_positions = np.linspace(top_left[1], bottom_right[1], num=num_rows)
+    return [(int(col_positions[i]),int(row_positions[j])) for j in range(num_rows) for  i in range(num_cols)]
+
+# These are the coordinates of the top left and bottom right of the cart image
+# given it's curent size. You need to change these if you change the size of the
+# cart
+top_left=[300,300]
+bottom_right=[650, 450]
+
+grid = create_grid(top_left, bottom_right)
+
+def add_logo(background, symbol, position, size=(70,70)):
+    bg = Image.open(background)
+    fg = Image.open("logos/{}.png".format(symbol))
+
+    bg = bg.convert("RGBA")
+    fg = fg.convert("RGBA")
+
+    # Resize logo
+    fg_resized = fg.resize(size)
+
+    # Overlay logo onto background at position
+    bg.paste(fg_resized,box=position,mask=fg_resized)
+
+    # Save result
+    bg.save(background)
+
+
+
+cart_cols = st.columns([4,1,1])
+
+
 
 if any(checkboxes):
   checked_ids=[]
   for i, value in enumerate(checkboxes):
     if value==1:
       checked_ids.append(ids_list[i])
-  price_subset_df = price_histories_df[price_histories_df['coin'].isin(checked_ids)]
-  rebased_subset_df = rebased_prices_df[rebased_prices_df['coin'].isin(checked_ids)]
-  fig1 = px.line(price_subset_df, x="date", y="price", color="coin")
-  st.write(fig1)
-  fig2 = px.line(rebased_subset_df, x="date", y="rebased_price", color="coin")
-  st.write(fig2)
+      cart_cols[1].image(f'logos/{symbols_list[i]}.png',width=20)
+      cart_cols[2].slider(ids_list[i],min_value=0, max_value=100, value=50)
+
+
+# change the below to make it run only if checked_ids ecists - i.e. wrap it up oin a function
+original = Image.open("images/cart.png")
+original.save('images/background.png')
+position_ids = [round(x) for x in np.linspace(0, len(grid)-1, num=len(checked_ids))]
+for i, id in enumerate(checked_ids):
+    add_logo('images/background.png', id_symbol_map[id], grid[position_ids[i]], size=(70,70))
+
+cart_cols[0].image('images/background.png', width=360)
+
+gen_port = st.button('Generate portfolio return')
+
+if gen_port:
+  weights = [1/len(checked_ids)]*len(checked_ids)
+  portfolio_dict={checked_ids[i]:weights[i] for i in range(len(checked_ids))}
+  start_date = dt.date.today()-dt.timedelta(360)
+  weighted_prices_df = pd.DataFrame(columns=['coin','date','price','weighted_price'])
+  for id in checked_ids:
+    temp_weight_df = return_histories_df[(return_histories_df['date']>=pd.Timestamp(start_date))
+                                        & (return_histories_df['coin']==id)]
+    weighted_price=[portfolio_dict[id]]
+    for i in range(1,len(temp_weight_df)):
+      weighted_price.append(temp_weight_df['price'].iloc[i]*weighted_price[i-1])
+    temp_weight_df['weighted_price']=weighted_price
+    weighted_prices_df = pd.concat([weighted_prices_df, temp_weight_df])
+  date_list = [start_date + dt.timedelta(days=x) for x in range(360)]
+  port_returns=[]
+  for date in date_list:
+    port_returns.append(weighted_prices_df['weighted_price'][weighted_prices_df['date']==pd.Timestamp(date)].sum())
+  port_returns_df = pd.DataFrame({'date':date_list, 'price': port_returns})
+  fig3 = px.line(port_returns_df, x="date", y="price")
+  st.write(fig3)
+
+
+  #for i, symbol in enumerate(symbols_list):
+  #  col2 = cols2[i]
+  #  col.image(f'logos/{symbol}.png',width=40)
+  #price_subset_df = price_histories_df[price_histories_df['coin'].isin(checked_ids)]
+  #rebased_subset_df = rebased_prices_df[rebased_prices_df['coin'].isin(checked_ids)]
+  #fig1 = px.line(price_subset_df, x="date", y="price", color="coin")
+  #st.write(fig1)
+  #fig2 = px.line(rebased_subset_df, x="date", y="rebased_price", color="coin")
+  #st.write(fig2)
+
 
 
 
