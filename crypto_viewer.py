@@ -4,6 +4,7 @@ import json
 import plotly.express as px
 import pandas as pd
 import datetime as dt
+from risk_metrics import annual_return, absolute_return, annual_vol, max_drawdown
 try:
     from PIL import Image
 except ImportError:
@@ -246,6 +247,19 @@ cart_cols[0].image('images/background.png', width=400)
 cart_cols[1].write(bar_fig)
 gen_port = st.button('Generate portfolio return')
 
+metrics_dict= {'annual_return' : "Return (annualised)", 'absolute_return': "Return over period",
+ 'annual_vol': 'Annual volatility', 'max_drawdown': 'Max loss'}
+
+def write_metrics(prices, *metrics):
+  for metric in metrics:
+    cols = st.columns(2)
+    if metric.__name__ == 'max_drawdown':
+      cols[0].write(metrics_dict[metric.__name__] +': ')
+      cols[1].write('{:.2%}'.format(metric(prices)[0]))
+    else:
+      cols[0].write(metrics_dict[metric.__name__] +': ')
+      cols[1].write('{:.2%}'.format(metric(prices)))
+
 if gen_port:
   # adjust weight calculation to read in from globals()["slider_"+ids_list[i]]
   #weights = [1/len(checked_ids)]*len(checked_ids)
@@ -265,8 +279,21 @@ if gen_port:
   for date in date_list:
     port_returns.append(weighted_prices_df['weighted_price'][weighted_prices_df['date']==pd.Timestamp(date)].sum())
   port_returns_df = pd.DataFrame({'date':date_list, 'price': port_returns})
+  prices = port_returns_df['price']
+  max_dd, start_idx, end_idx = max_drawdown(prices)
+  start_dt = port_returns_df['date'].iloc[start_idx]
+  end_dt = port_returns_df['date'].iloc[end_idx]
   fig3 = px.line(port_returns_df, x="date", y="price")
+  fig3.add_vline(x=start_dt, line_width=1, line_color="red")
+  fig3.add_vline(x=end_dt, line_width=1, line_color="red")
+  fig3.add_vrect(x0=start_dt, x1=end_dt, line_width=0, fillcolor="red", opacity=0.05, annotation_text="max loss ")
   st.write(fig3)
+
+  st.title("Risk metrics")
+  write_metrics(prices, absolute_return, annual_return, annual_vol, max_drawdown)
+
+
+
 
 
   #for i, symbol in enumerate(symbols_list):
