@@ -4,6 +4,7 @@ import json
 import plotly.express as px
 import pandas as pd
 import datetime as dt
+from risk_metrics import annual_return, absolute_return, annual_vol, max_drawdown
 try:
     from PIL import Image
 except ImportError:
@@ -13,9 +14,7 @@ import numpy as np
 st.markdown(
   """
   <style>
-  .css-qrbaxs {
-    font-size: 0px;
-}
+
 .css-1inwz65 {
     font-size: 0px;
 }
@@ -133,11 +132,32 @@ fig2 = px.line(rebased_prices_df, x="date", y="rebased_price", color="coin")
 st.write(fig2)
 cols = st.columns(len(symbols_list))
 checkboxes=[]
-for i, symbol in enumerate(symbols_list):
-  col = cols[i]
-  col.image(f'logos/{symbol}.png',width=40)
-  globals()[st.session_state.names[i]] = col.checkbox(symbol, value = 0)
-  checkboxes.append(globals()[st.session_state.names[i]])
+
+def write_coins(id_symbol_map, n_cols=5):
+  n_coins = len(id_symbol_map)
+  n_rows = 1 + n_coins // int(n_cols)
+
+  rows = [st.container() for _ in range(n_rows)]
+  cols_per_row = [r.columns(n_cols) for r in rows]
+  cols = [column for row in cols_per_row for column in row]
+
+  #cols = st.columns(n_coins)
+  #checkboxes=[]
+  for i, id in enumerate(id_symbol_map):
+    cols[i].image('logos/{}.png'.format(id_symbol_map[id]),width=40)
+    globals()[st.session_state.names[i]] = cols[i].checkbox("include", value = 1, key=id)
+    globals()["slider_"+ids_list[i]] = cols[i].slider(id, min_value=0, max_value=100, value=50, key=id)
+    checkboxes.append(globals()[st.session_state.names[i]])
+
+write_coins(id_symbol_map)
+
+
+
+#for i, symbol in enumerate(symbols_list):
+#  col = cols[i]
+#  col.image(f'logos/{symbol}.png',width=40)
+#  globals()[st.session_state.names[i]] = col.checkbox(symbol, value = 1)
+#  checkboxes.append(globals()[st.session_state.names[i]])
 
 
 
@@ -188,7 +208,7 @@ def add_logo(background, symbol, position, size=(70,70)):
 
 
 
-cart_cols = st.columns([4,1,1])
+cart_cols = st.columns([3,2])
 
 
 
@@ -197,8 +217,8 @@ if any(checkboxes):
   for i, value in enumerate(checkboxes):
     if value==1:
       checked_ids.append(ids_list[i])
-      cart_cols[1].image(f'logos/{symbols_list[i]}.png',width=20)
-      cart_cols[2].slider(ids_list[i],min_value=0, max_value=100, value=50)
+      #cart_cols[1].image(f'logos/{symbols_list[i]}.png',width=20)
+      #cart_cols[2].slider(ids_list[i],min_value=0, max_value=100, value=50)
 
 
 # change the below to make it run only if checked_ids ecists - i.e. wrap it up oin a function
@@ -206,14 +226,43 @@ original = Image.open("images/cart.png")
 original.save('images/background.png')
 position_ids = [round(x) for x in np.linspace(0, len(grid)-1, num=len(checked_ids))]
 for i, id in enumerate(checked_ids):
-    add_logo('images/background.png', id_symbol_map[id], grid[position_ids[i]], size=(70,70))
+  size = tuple([int(num * globals()["slider_"+id]/50)  for num in (70,70)])
 
-cart_cols[0].image('images/background.png', width=360)
+  add_logo('images/background.png', id_symbol_map[id], grid[position_ids[i]], size=size)
 
+weights=[]
+for id in checked_ids:
+  weights.append(globals()["slider_"+id])
+sum_weights = sum(weights)
+weights = [weight/sum_weights for weight in weights]
+
+weights_df = pd.DataFrame({'ids':checked_ids, 'weights': weights, 'portfolio': 'port_1'})
+pie_fig = px.pie(weights_df, values='weights', names='ids')
+pie_fig.update_layout(showlegend=False)
+
+bar_fig = px.bar(weights_df, x="portfolio", y="weights", color="ids", width=200)
+bar_fig.update_layout(showlegend=False)
+
+cart_cols[0].image('images/background.png', width=400)
+cart_cols[1].write(bar_fig)
 gen_port = st.button('Generate portfolio return')
 
+metrics_dict= {'annual_return' : "Return (annualised)", 'absolute_return': "Return over period",
+ 'annual_vol': 'Annual volatility', 'max_drawdown': 'Max loss'}
+
+def write_metrics(prices, *metrics):
+  for metric in metrics:
+    cols = st.columns(2)
+    if metric.__name__ == 'max_drawdown':
+      cols[0].write(metrics_dict[metric.__name__] +': ')
+      cols[1].write('{:.2%}'.format(metric(prices)[0]))
+    else:
+      cols[0].write(metrics_dict[metric.__name__] +': ')
+      cols[1].write('{:.2%}'.format(metric(prices)))
+
 if gen_port:
-  weights = [1/len(checked_ids)]*len(checked_ids)
+  # adjust weight calculation to read in from globals()["slider_"+ids_list[i]]
+  #weights = [1/len(checked_ids)]*len(checked_ids)
   portfolio_dict={checked_ids[i]:weights[i] for i in range(len(checked_ids))}
   start_date = dt.date.today()-dt.timedelta(360)
   weighted_prices_df = pd.DataFrame(columns=['coin','date','price','weighted_price'])
@@ -230,8 +279,21 @@ if gen_port:
   for date in date_list:
     port_returns.append(weighted_prices_df['weighted_price'][weighted_prices_df['date']==pd.Timestamp(date)].sum())
   port_returns_df = pd.DataFrame({'date':date_list, 'price': port_returns})
+  prices = port_returns_df['price']
+  max_dd, start_idx, end_idx = max_drawdown(prices)
+  start_dt = port_returns_df['date'].iloc[start_idx]
+  end_dt = port_returns_df['date'].iloc[end_idx]
   fig3 = px.line(port_returns_df, x="date", y="price")
+  fig3.add_vline(x=start_dt, line_width=1, line_color="red")
+  fig3.add_vline(x=end_dt, line_width=1, line_color="red")
+  fig3.add_vrect(x0=start_dt, x1=end_dt, line_width=0, fillcolor="red", opacity=0.05, annotation_text="max loss ")
   st.write(fig3)
+
+  st.title("Risk metrics")
+  write_metrics(prices, absolute_return, annual_return, annual_vol, max_drawdown)
+
+
+
 
 
   #for i, symbol in enumerate(symbols_list):
