@@ -68,10 +68,34 @@ def adjust_rebased():
 melt_df = create_rebase_chart(st.session_state.rebased_df, num_coins=investment_set)
 fig = px.line(melt_df, x=melt_df.index, y='price (USD)', color='coin')
 
+with st.expander('Quick explantion', expanded = True):
+  st.subheader("What's this all about then, eh?")
+  st.write('''
+  The app allows you to construct portfolios of crypto currencies and to
+  backtest their historic performance.
+
+  You can select how many coins you would like in your investment set using the
+  dropdown box in the sidebar.
+
+  You can select from two different portfolio constructions
+  strategies using the dropdown box in the sidebar:
+
+  - Uniform - An equal propotion of your initial investment is allocated to each coin.
+  - Markowitz - Your initial investment is allocated to each coin to achieve the portfolio with the highest sharpe ratio in the 365 day period prior to the investment start date.
+
+  You can adjust the date range for the portfolio backtest using the slider widget below.
+
+  If you would like to see the performance of the individual coins in your investment set
+  over the backtest period click the + icon in the Coin view expander.
+
+  To collapse this expander click the - icon at the top right.
+
+  ''')
+
 # Add select slider to allow
 date_list = date_range(end_date,lookback_years-1)
 start_port_date, end_port_date = st.select_slider(
-     'Select date range for investment analysis',
+     'Select date range for portolio backtest',
      key="myslider",
      options=date_list,
      value=(date.today() - timedelta(365), date.today()),
