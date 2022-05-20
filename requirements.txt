@@ -1,0 +1,8 @@
+numpy
+pandas
+Pillow
+plotly
+requests
+streamlit
+pypfopt
+datetime
