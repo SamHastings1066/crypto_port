@@ -78,7 +78,7 @@ start_port_date, end_port_date = st.select_slider(
      on_change=adjust_rebased
      )
 
-with st.expander("Coin view", expanded=True):
+with st.expander("Coin view", expanded=False):
   st.subheader('Individual coin performance')
   st.write(fig)
 
