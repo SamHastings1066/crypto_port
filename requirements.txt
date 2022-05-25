@@ -6,3 +6,4 @@ requests
 streamlit
 PyPortfolioOpt
 datetime
+matplotlib

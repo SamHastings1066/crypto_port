@@ -36,6 +36,13 @@ def gen_symbols(assets_json):
     ids_list.append(dict['id'])
   return symbols_list, names_list, ids_list
 
+@st.cache(persist=True, show_spinner=False)
+def create_market_cap_dict(assets_json):
+  market_cap_dict = {}
+  for asset_dict in assets_json['data']:
+    market_cap_dict[asset_dict['id']] = int(float(asset_dict['marketCapUsd']))
+  return market_cap_dict
+
 def load_histories(coin_ids, start, end):
   '''
   Function to load daily historic prices for all crypto currencies in the
@@ -119,3 +126,24 @@ def create_rebased_df(returns_df, start_date, end_date):
 @st.cache(persist=True, show_spinner=False)
 def date_range(end_date, lookback_years):
   return [end_date - timedelta(x) for x in range(365 * lookback_years)][::-1]
+
+@st.cache(persist=True, show_spinner=False)
+def ids2names_dict(coin_ids, names):
+  ids2names_dict={}
+  for i, id in enumerate(coin_ids):
+    ids2names_dict[id] = names[i]
+  return ids2names_dict
+
+@st.cache(persist=True, show_spinner=False)
+def names2ids_dict(names, coin_ids):
+  names2ids_dict={}
+  for i, name in enumerate(names):
+    names2ids_dict[name] = coin_ids[i]
+  return names2ids_dict
+
+@st.cache(persist=True, show_spinner=False)
+def gen_rebased_df(histories_df, ids_with_histories, start_date, end_date):
+  returns_df = histories_df[ids_with_histories].pct_change(1)
+  returns_df[start_date:start_date]=0
+  return (1 + returns_df[start_date:end_date]).cumprod()
+

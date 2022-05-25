@@ -36,3 +36,4 @@ def annual_vol(prices):
   cryptos trade 365 days a year
   '''
   return prices.pct_change().std()*(365**0.5)
+

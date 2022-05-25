@@ -29,7 +29,7 @@ def uniform(returns_df, num_coins, start_date, end_date):
 def markowitz(returns_df):
   pass
 
-@st.cache(persist=True, show_spinner=False)
+@st.cache(persist=True, show_spinner=False, allow_output_mutation=True)
 def create_port_rtns(returns_df, weights, investment_cols, start_date, end_date):
   investment_df = returns_df[investment_cols]
   investment_df[start_date:start_date]=0
@@ -69,3 +69,60 @@ def create_weights_df(weights_dict, strategy):
     'assets': list(weights_dict.keys()),
     'weights': list(weights_dict.values())
   })
+
+@st.cache(persist=True, show_spinner=False)
+def ids_with_histories(histories_df, start_date, end_date):
+  investment_df = histories_df[start_date:end_date]
+  investment_df.dropna(axis=1, inplace=True) # drop cols with any NaN values
+  return investment_df.columns
+
+@st.cache(persist=True, show_spinner=False)
+def uniform_weights_dict(ids_with_histories):
+  weight = 1/len(ids_with_histories)
+  uniform_weights_dict = {}
+  for id in ids_with_histories:
+    uniform_weights_dict[id] = weight
+  return uniform_weights_dict
+
+@st.cache(persist=True, show_spinner=False)
+def markowitz_weights_dict(histories_df,start_port_date,ids_with_histories, analysis_days=365):
+  start_analysis_date = start_port_date - timedelta(analysis_days)
+  analysis_df = histories_df[start_analysis_date:start_port_date][ids_with_histories]
+
+  # Calculate expected returns and sample covariance
+  mu = expected_returns.mean_historical_return(analysis_df)
+  S = risk_models.sample_cov(analysis_df)
+  # Optimize for maximal Sharpe ratio
+  attempts=0
+  while attempts < 10:
+    try:
+      ef = EfficientFrontier(mu, S, weight_bounds=(0, 1))
+      ef.max_sharpe()
+      break
+    except Exception as e:
+      attempts += 1
+  try:
+    cleaned_weights = ef.clean_weights()
+  except Exception as e:
+    print("Could not find optimal solution, try changing optimisation constraints or investment set")
+  return {k: v for k, v in sorted(cleaned_weights.items(), key=lambda item: item[1], reverse=True)}
+  #return cleaned_weights
+
+@st.cache(persist=True, show_spinner=False)
+def gen_port_rtns(rebased_df, weights_dict):
+  return rebased_df[list(weights_dict.keys())].dot(list(weights_dict.values()))
+
+@st.cache(persist=True, show_spinner=False)
+def gen_all_returns(rebased_df, ids_with_histories,uniform_weights_dict,
+  markowitz_weights_dict):
+  '''
+  A function to generate returns for all portfolios and all coins with full
+  histories over the backtest period, rebased to the start of the backtest
+  period.
+  '''
+  uniform_returns = gen_port_rtns(rebased_df, uniform_weights_dict)
+  uniform_returns.name = "Uniform"
+  markowitz_returns = gen_port_rtns(rebased_df, markowitz_weights_dict)
+  markowitz_returns.name = "Markowitz"
+  port_returns = uniform_returns.to_frame().join(markowitz_returns)
+  return port_returns.join(rebased_df[ids_with_histories])
