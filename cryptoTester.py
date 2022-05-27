@@ -85,6 +85,33 @@ with st.sidebar:
   names_with_histories
   )
 
+if st.checkbox("Explain this"):
+  st.subheader("What's this all about then, eh?")
+  st.write('''
+  The app allows you to compare the historic performance of several different
+  types of portfolios of crypto currencies with the performance of individual
+  coins.
+
+  You can select from two different portfolio constructions
+  strategies using the 'Select portfolio strategy' dropdown box in the sidebar:
+
+  - Uniform - An equal propotion of your initial investment is allocated to each coin.
+  - Markowitz - Your initial investment is allocated to each coin to achieve the portfolio with the highest sharpe ratio in the 365 day period prior to the investment start date.
+
+  You can select how many coins you would like in your investment set using the
+  'Maximum number of coins in portfolio' dropdown box in the sidebar.
+
+  You can select a coin for comparison using the 'Select coin' dropdown box in the sidebar.
+
+  You can adjust the date range for the portfolio backtest using the slider widget below.
+
+  The 'Pofolio vs coin' chart displays the historic performance of the selected
+  portfolio and coin for the selected date range, rebased to $1 at the start date.
+
+  The 'Overview of performance section' sets out performance metrics for all of
+  the portfolios and coins, for the selected investment period. The tables can
+  be sorted based on the metric of interest.
+  ''')
 
 # Add select slider to allow
 date_list = date_range(end_date,lookback_years-1)
@@ -112,9 +139,10 @@ all_returns_df = gen_all_returns(rebased_df, ids_with_histories, strategy_dict)
 
 chart_df = create_chart_df(all_returns_df, portfolio_type, names2ids_dict[selected_coin])
 
-fig = px.line(chart_df, x=chart_df.index, y='value', color='variable')
+fig = px.line(chart_df, x=chart_df.index, y='Value (USD)', color='Asset')
 fig, port_dd, port_dd_start, port_dd_end = add_drawdown(fig, all_returns_df, portfolio_type)
 #fig, coin_dd, coin_dd_start, coin_dd_end = add_drawdown(fig, all_returns_df, names2ids_dict[selected_coin])
+st.subheader("Portfolio vs coin")
 st.write(fig)
 
 

@@ -14,13 +14,13 @@ def create_rebase_chart(rebased_df, num_coins):
 @st.cache(persist=True, show_spinner=False)
 def create_chart_df(all_returns_df, portfolio, coin):
   melt_df = pd.melt(all_returns_df, value_vars=[portfolio, coin], ignore_index=False)
-  #melt_df.columns=['Strategy','price (USD)']
+  melt_df.columns=['Asset','Value (USD)']
   return melt_df
 
 @st.cache(persist=True, show_spinner=False)
 def create_comparison_df(all_returns_df, selected_assets):
   melt_df = pd.melt(all_returns_df, value_vars=selected_assets, ignore_index=False)
-  #melt_df.columns=['Strategy','price (USD)']
+  melt_df.columns=['Asset','Value (USD)']
   return melt_df
 
 @st.cache(persist=True, show_spinner=False)

@@ -83,7 +83,30 @@ with st.sidebar:
   )
 
 
-st.title("Portfolio backtester")
+if st.checkbox("Explain this"):
+  st.subheader("What's this all about then, eh?")
+  st.write('''
+  The app allows you to construct your own portfolios of crypto currencies and view their
+  historic performance alongside the performance of individual crypto
+  currencies over an investment period of your choosing.
+
+  To view the assets and weights comprising a partciclar portfolio select the
+  portfolio of interest in the 'Select portfolio strategy' dropdown (a uniform
+  portfolio fo the top ten lagest coins has been automatically created for you
+  to start with).
+
+  To create your own portfolio:
+
+  1. Select 'Create your own' in the 'select portfolio strategy' dropdown;
+  2. Select the maximum number of coins in your portfolio;
+  3. Select the relative weights for each of these assets;
+  4. Choose a name for your portfolio and click add portfolio;
+  5. Click update viewer;
+
+  You can sort and filter the performance metrics table on each of the columns.
+
+  To add an asset to the performance chart, select the corresponding select box.
+  ''')
 
 # Add select slider to allow
 date_list = date_range(end_date,lookback_years-1)
@@ -158,6 +181,8 @@ performance_ag_df = gen_performance_ag_df(all_returns_df, market_cap_dict,
 gb = GridOptionsBuilder.from_dataframe(performance_ag_df)
 gb.configure_selection('multiple', use_checkbox=True, pre_selected_rows = [0])
 gridOptions = gb.build()
+
+st.subheader("Performance metrics")
 grid_response = AgGrid(performance_ag_df, gridOptions=gridOptions,
   data_return_mode = 'FILTERED', allow_unsafe_jscode=True, height = 200,
   update_mode='MODEL_CHANGED') # MANUAL SELECTION_CHANGED
@@ -168,5 +193,7 @@ for row in grid_response['selected_rows']:
 
 chart_df = create_comparison_df(all_returns_df, selected_assets)
 
-fig = px.line(chart_df, x=chart_df.index, y='value', color='variable')
+fig = px.line(chart_df, x=chart_df.index, y='Value (USD)', color='Asset')
+
+st.subheader("Performance chart")
 st.write(fig)
