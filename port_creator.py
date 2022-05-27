@@ -110,19 +110,32 @@ def markowitz_weights_dict(histories_df,start_port_date,ids_with_histories, anal
 
 @st.cache(persist=True, show_spinner=False)
 def gen_port_rtns(rebased_df, weights_dict):
-  return rebased_df[list(weights_dict.keys())].dot(list(weights_dict.values()))
+  new_weights_dict = {k: v for k, v in weights_dict.items() if k in rebased_df.columns}
+  new_weights_dict = {k: v/sum(new_weights_dict.values()) for k, v in new_weights_dict.items()}
+  return rebased_df[list(new_weights_dict.keys())].dot(list(new_weights_dict.values()))
+  #return rebased_df[list(weights_dict.keys())].dot(list(weights_dict.values()))
 
 @st.cache(persist=True, show_spinner=False)
-def gen_all_returns(rebased_df, ids_with_histories,uniform_weights_dict,
-  markowitz_weights_dict):
+def gen_all_returns(rebased_df, ids_with_histories, strategy_dict):
   '''
   A function to generate returns for all portfolios and all coins with full
   histories over the backtest period, rebased to the start of the backtest
   period.
   '''
-  uniform_returns = gen_port_rtns(rebased_df, uniform_weights_dict)
-  uniform_returns.name = "Uniform"
-  markowitz_returns = gen_port_rtns(rebased_df, markowitz_weights_dict)
-  markowitz_returns.name = "Markowitz"
-  port_returns = uniform_returns.to_frame().join(markowitz_returns)
+  port_returns = gen_port_rtns(rebased_df, strategy_dict['Uniform'])
+  port_returns = pd.DataFrame({'Uniform': port_returns})
+  temp_dict = {k: v for k, v in strategy_dict.items() if k != 'Uniform'}
+  if len(temp_dict)!=0:
+    for name, weights in temp_dict.items():
+      temp_returns = gen_port_rtns(rebased_df, weights)
+      temp_returns.name = name
+      port_returns = port_returns.join(temp_returns)
   return port_returns.join(rebased_df[ids_with_histories])
+
+  #uniform_returns = gen_port_rtns(rebased_df, uniform_weights_dict)
+  #uniform_returns.name = "Uniform"
+  #markowitz_returns = gen_port_rtns(rebased_df, markowitz_weights_dict)
+  #markowitz_returns.name = "Markowitz"
+  #port_returns = uniform_returns.to_frame().join(markowitz_returns)
+  #return port_returns.join(rebased_df[ids_with_histories])
+

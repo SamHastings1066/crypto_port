@@ -115,8 +115,8 @@ for i, coin in enumerate(investment_cols):
 markowitz_weights_dict = markowitz_weights(histories_df,start_port_date,investment_cols, analysis_days=365)
 
 uniform_returns = create_port_rtns(returns_df, uniform_weights, investment_cols, start_port_date, end_port_date)
-marjotwitz_returns = create_port_rtns(returns_df, list(markowitz_weights_dict.values()), investment_cols, start_port_date, end_port_date)
-returns_dict = {'Uniform': uniform_returns, 'Markowitz':marjotwitz_returns}
+markotwitz_returns = create_port_rtns(returns_df, list(markowitz_weights_dict.values()), investment_cols, start_port_date, end_port_date)
+returns_dict = {'Uniform': uniform_returns, 'Markowitz':markotwitz_returns}
 strategy_dict = {'Uniform': uniform_weights_dict, 'Markowitz':markowitz_weights_dict}
 port_return = returns_dict[portfolio_type]
 

@@ -7,3 +7,4 @@ streamlit
 PyPortfolioOpt
 datetime
 matplotlib
+streamlit-aggrid
