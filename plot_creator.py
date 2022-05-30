@@ -4,6 +4,7 @@ import streamlit as st
 from PIL import Image
 import glob
 from risk_metrics import absolute_return, annual_vol, max_drawdown
+from streamlit_custom_slider import st_custom_slider
 
 @st.cache(persist=True, show_spinner=False)
 def create_rebase_chart(rebased_df, num_coins):
@@ -127,6 +128,25 @@ def write_bespoke_coins(coin_names, n_cols=2):
   weights_list = [weight/sum(weights_list) for weight in weights_list]
   return weights_list
 
+
+def write_coins_custom(coin_names, n_cols=2):
+  n_coins = len(coin_names)
+  n_rows = 1 + n_coins // int(n_cols)
+
+  rows = [st.container() for _ in range(n_rows)]
+  cols_per_row = [r.columns(n_cols) for r in rows]
+  cols = [column for row in cols_per_row for column in row]
+
+  #cols = st.columns(n_coins)
+  #checkboxes=[]
+  weights_list = []
+  for i, coin_name in enumerate(coin_names):
+    with cols[i]:
+      weight = st_custom_slider(coin_name, min_value=0, max_value=100,
+        value=50, key=coin_name)
+    weights_list.append(weight)
+  weights_list = [weight/sum(weights_list) for weight in weights_list]
+  return weights_list
 
 @st.cache(persist=True, show_spinner=False)
 def get_pre_selected_idx(assets, pre_selected):

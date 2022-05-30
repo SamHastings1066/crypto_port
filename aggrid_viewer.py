@@ -2,7 +2,7 @@ import streamlit as st
 import plotly.express as px
 from datetime import date, timedelta
 from data_creator import create_market_cap_dict, gen_rebased_df, ids2names_dict, names2ids_dict, create_assets, gen_symbols, create_histories_df, create_unix_dates, create_returns_df, create_rebased_df, date_range
-from plot_creator import get_pre_selected_idx, write_coins, write_bespoke_coins, create_comparison_df, load_images, gen_performance_ag_df, add_drawdown
+from plot_creator import get_pre_selected_idx, write_coins, write_coins_custom, write_bespoke_coins, create_comparison_df, load_images, gen_performance_ag_df, add_drawdown
 from port_creator import gen_all_returns, markowitz_weights_dict, uniform_weights_dict, ids_with_histories, uniform, create_port_rtns, markowitz_weights, create_weights_df
 from risk_metrics import max_drawdown
 from st_aggrid import AgGrid, GridOptionsBuilder
@@ -90,9 +90,9 @@ if st.checkbox("Explain this"):
   historic performance alongside the performance of individual crypto
   currencies over an investment period of your choosing.
 
-  To view the assets and weights comprising a partciclar portfolio select the
+  To view the assets and weights comprising a particular portfolio select the
   portfolio of interest in the 'Select portfolio strategy' dropdown (a uniform
-  portfolio fo the top ten lagest coins has been automatically created for you
+  portfolio for the top ten largest coins has been automatically created for you
   to start with).
 
   To create your own portfolio:
@@ -118,6 +118,7 @@ start_port_date, end_port_date = st.select_slider(
      value = (st.session_state.start_date, st.session_state.end_date),
      on_change=change_date_range
      )
+
 
 # Move the definition of strategy_dict to about the potfolio_type selectbox
 # This will require that you define max_coins in session state,a dn the
@@ -151,7 +152,8 @@ if portfolio_type == 'Create your own':
     '''
     )
     st.markdown("Bespoke portfolio weights (relative):" , unsafe_allow_html=False)
-    bespoke_weights = write_bespoke_coins(names_with_histories[:st.session_state.max_coins])
+    bespoke_weights = write_coins_custom(names_with_histories[:st.session_state.max_coins])
+    #bespoke_weights = write_bespoke_coins(names_with_histories[:st.session_state.max_coins])
     bespoke_cols = st.columns(2)
     bespoke_cols[0].write(" ")
     bespoke_cols[0].write(" ")
