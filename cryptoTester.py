@@ -64,9 +64,14 @@ def change_date_range():
   st.session_state.start_date = st.session_state.myslider[0]
   st.session_state.end_date = st.session_state.myslider[1]
 
-with st.expander("Explain this 🤔"):
+st.write('''
+N.B. This app is in Beta, it will be buggy and some of the calculation may be
+  erroneous. **It is deeeeeefinitely not investment advice**.
+''', unsafe_allow_html = True)
+with st.expander("Explain this app 🤔"):
   st.subheader("What's this all about then, eh?")
   st.write('''
+
   This app allows you to graph the historic performance of a portfolio of
   your choosing against an individual coin of your choosing. You can
   compare the hisoric performance of all available assets (portfolios and coins)
