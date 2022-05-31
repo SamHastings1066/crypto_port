@@ -20,7 +20,8 @@ def create_chart_df(all_returns_df, portfolio, coin):
 
 @st.cache(persist=True, show_spinner=False)
 def create_comparison_df(all_returns_df, selected_assets):
-  melt_df = pd.melt(all_returns_df, value_vars=selected_assets, ignore_index=False)
+  selected_assets_present = [asset for asset in selected_assets if asset in list(all_returns_df.columns)]
+  melt_df = pd.melt(all_returns_df, value_vars=selected_assets_present, ignore_index=False)
   melt_df.columns=['Asset','Value (USD)']
   return melt_df
 
@@ -39,10 +40,10 @@ def load_images():
   return image_dict
 
 @st.cache(persist=True, show_spinner=False)
-def gen_performance_df(all_returns_df, market_cap_dict):
+def gen_performance_df(all_returns_df, market_cap_dict, strategy_dict):
   assets = all_returns_df.columns
   performance_df = pd.DataFrame(index = assets)
-  performance_df['Type'] = ["Portfolio" if x in ['Uniform', 'Markowitz'] else "Coin" for x in assets]
+  performance_df['Type'] = ["Portfolio" if x in  list(strategy_dict.keys()) else "Coin" for x in assets]
   abs_return = all_returns_df.apply(absolute_return)
   ann_vol = all_returns_df.apply(annual_vol)
   drawdown_triples = all_returns_df.apply(max_drawdown)
@@ -53,9 +54,9 @@ def gen_performance_df(all_returns_df, market_cap_dict):
           market_caps.append(int(market_cap_dict[asset]))
       except:
           market_caps.append(0)
-  performance_df['Risk adjusted return %'] =  sharpe *100
-  performance_df['Return over period %'] = abs_return * 100
-  performance_df['Annual volatility'] = ann_vol *100
+  performance_df['Total return %'] = abs_return * 100
+  performance_df['Risk / return'] =  sharpe *100
+  performance_df['Annual vol'] = ann_vol *100
   performance_df['Max loss %'] = drawdown_triples.iloc[0] *100
   performance_df['Market cap $M'] = [cap/1000000 for cap in market_caps]
   return performance_df

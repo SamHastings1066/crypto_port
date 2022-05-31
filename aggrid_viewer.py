@@ -6,6 +6,9 @@ from plot_creator import get_pre_selected_idx, write_coins, write_coins_custom, 
 from port_creator import gen_all_returns, markowitz_weights_dict, uniform_weights_dict, ids_with_histories, uniform, create_port_rtns, markowitz_weights, create_weights_df
 from risk_metrics import max_drawdown
 from st_aggrid import AgGrid, GridOptionsBuilder
+from persist import persist, load_widget_state
+
+load_widget_state()
 
 st.markdown(
   """
@@ -74,6 +77,9 @@ strategy_dict = {'Uniform': uniform_weights_dict}#, 'Markowitz':markowitz_weight
 if "strategy_dict" not in st.session_state:
   st.session_state.strategy_dict=strategy_dict
 
+if 'selected_assets' not in st.session_state:
+  st.session_state.selected_assets = ["Uniform"]
+
 with st.sidebar:
   st.subheader("Portfolio weights viewer")
   portfolio_type = st.selectbox(
@@ -133,7 +139,14 @@ rebased_df = gen_rebased_df(histories_df, ids_with_histories,
 
 all_returns_df = gen_all_returns(rebased_df, ids_with_histories,st.session_state.strategy_dict)
 
+def write_something():
+  st.write("")
 
+def rerun_aggrid():
+  st.session_state.selected_indexes = selected_indexes
+  st.session_state.performance_ag_df = gen_performance_ag_df(all_returns_df, market_cap_dict,
+  st.session_state.strategy_dict)
+  st.header('ran')
 
 if portfolio_type == 'Create your own':
   with st.sidebar:
@@ -168,8 +181,11 @@ if portfolio_type == 'Create your own':
           beskpoke_weights_dict[coin_ids[i]] = wt
         st.session_state.strategy_dict[bespoke_name] = beskpoke_weights_dict
         st.session_state.start_id = len(st.session_state.strategy_dict)
+        #st.session_state.selected_assets.append(bespoke_name)
         st.success("Porfolio added, update viewer to see results")
-        st.button('Update viewer', on_click = change_date_range)
+        #st.button('Update viewer', on_click = change_date_range)
+        st.button('Update viewer', on_click = rerun_aggrid)
+        #st.button('Update viewer', on_click = st.experimental_rerun())
     #st.write(st.session_state.strategy_dict)
 else:
   non_zero_coins = [key for key in st.session_state.strategy_dict[portfolio_type].keys() if st.session_state.strategy_dict[portfolio_type][key]>0]
@@ -177,23 +193,44 @@ else:
     st.markdown(portfolio_type + " portfolio weights (%):" , unsafe_allow_html=False)
     write_coins(non_zero_coins, st.session_state.strategy_dict[portfolio_type], ids2names_dict)
 
-performance_ag_df = gen_performance_ag_df(all_returns_df, market_cap_dict,
+st.session_state.performance_ag_df = gen_performance_ag_df(all_returns_df, market_cap_dict,
   st.session_state.strategy_dict)
 
-gb = GridOptionsBuilder.from_dataframe(performance_ag_df)
-gb.configure_selection('multiple', use_checkbox=True, pre_selected_rows = [0])
+if 'selected_assets' not in st.session_state:
+  st.session_state.selected_assets = ["Uniform"]
+
+selected_indexes = []
+for asset in st.session_state.selected_assets:
+  try:
+    selected_indexes.append(list(st.session_state.performance_ag_df['Asset']).index(asset))
+  except:
+    pass
+
+if 'selected_indexes' not in st.session_state:
+  st.session_state.selected_indexes = selected_indexes
+
+gb = GridOptionsBuilder.from_dataframe(st.session_state.performance_ag_df)
+gb.configure_selection('multiple', use_checkbox=True,
+  pre_selected_rows = st.session_state.selected_indexes)
 gridOptions = gb.build()
 
 st.subheader("Performance metrics")
-grid_response = AgGrid(performance_ag_df, gridOptions=gridOptions,
+grid_response = AgGrid(st.session_state.performance_ag_df, gridOptions=gridOptions,
   data_return_mode = 'FILTERED', allow_unsafe_jscode=True, height = 200,
-  update_mode='MODEL_CHANGED') # MANUAL SELECTION_CHANGED
+  update_mode='MODEL_CHANGED', key = persist("aggrid")) # MANUAL SELECTION_CHANGED MODEL_CHANGED, VALUE_CHANGED
 
 selected_assets = []
 for row in grid_response['selected_rows']:
   selected_assets.append(row['Asset'])
+st.session_state.selected_assets = selected_assets
 
-chart_df = create_comparison_df(all_returns_df, selected_assets)
+
+
+#selected_indexes = []
+#for asset in st.session_state.selected_assets:
+#  selected_indexes.append(list(performance_ag_df['Asset']).index(asset))
+
+chart_df = create_comparison_df(all_returns_df, st.session_state.selected_assets)
 
 fig = px.line(chart_df, x=chart_df.index, y='Value (USD)', color='Asset')
 

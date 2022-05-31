@@ -49,7 +49,7 @@ def markowitz_weights(histories_df,start_port_date,investment_cols, analysis_day
   S = risk_models.sample_cov(analysis_df)
   # Optimize for maximal Sharpe ratio
   attempts=0
-  while attempts < 10:
+  while attempts < 50:
     try:
       ef = EfficientFrontier(mu, S, weight_bounds=(0, 1))
       ef.max_sharpe()
