@@ -65,7 +65,7 @@ def change_date_range():
   st.session_state.end_date = st.session_state.myslider[1]
 
 st.write('''
-N.B. This app is in Beta, it will be buggy and some of the calculation may be
+N.B. This app is in Beta, it will be buggy and some of the calculations may be
   erroneous. **It is deeeeeefinitely not investment advice**.
 ''', unsafe_allow_html = True)
 with st.expander("Explain this app 🤔"):
@@ -97,7 +97,7 @@ with st.expander("Explain this app 🤔"):
 
   Pre-defined portfolios:
   - Uniform - An equal propotion of your initial investment is allocated to each coin in the 'investment set' (i.e. the total number of coins available for investment).
-  - Markowitz - Your initial investment is allocated to each coin to achieve the portfolio with the highest sharpe ratio in the 365 day period prior to the investment start date.
+  - Markowitz - Your initial investment is allocated to each coin to achieve the portfolio with the highest sharpe ratio in the 365 day period prior to the investment start date. For some date ranges and investment sets, the optimiser used in the background of this app cannot find an optimal solution in which case the Markowitz weights will not be updated and you will see a warning at the top of the screen. I have used the default settings in the PyPortfolioOpt python package to construct this portolio.
 
   To select how many coins you would like in your investment set using the
   'Maximum number of coins in portfolio' inside the 'Portfolio construction
@@ -114,12 +114,15 @@ with st.expander("Explain this app 🤔"):
   4. Choose a name for your portfolio and click add portfolio;
   5. Click update viewer;
 
+  The data for this app has been generated using the coincap api and is updated
+  every day to include the previous day's closing prices.
+
   ''')
 
 # Add select slider to allow
 date_list = date_range(end_date,lookback_years-1)
 start_port_date, end_port_date = st.select_slider(
-     'Select date range for backtest (max 4 years)',
+     'Select date range (max 4 years)',
      key="myslider",
      options=date_list,
      #value=(date.today() - timedelta(365), date.today()),
