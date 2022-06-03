@@ -16,8 +16,10 @@ def persist(key: str) -> str:
 def load_widget_state():
     """Load persistent widget state."""
     if _PERSIST_STATE_KEY in _state:
-        _state.update({
-            key: value
-            for key, value in _state.items()
-            if key in _state[_PERSIST_STATE_KEY]
-        })
+        _state.update(
+            {
+                key: value
+                for key, value in _state.items()
+                if key in _state[_PERSIST_STATE_KEY]
+            }
+        )
